@@ -1,0 +1,485 @@
+---
+title: "Elderly mood disorder"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  word_document: default
+---
+
+```{r include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(table1)
+  library(corrr)
+  library("GGally")
+  library(ggplot2)
+  library(ggpubr)
+  library(nortest)
+library(gridExtra)
+ library(janitor)
+library(readxl)
+library(car)
+library(pROC)
+library(epiR)
+library(pubh)
+library(Publish)
+library(prodlim)
+```
+
+```{r}
+cchsdat = read_csv('/Users/xirao/Desktop/DGIN 5400/project/cchsData.csv')
+```
+```{r}
+knitr::opts_chunk$set( message=FALSE, warning=FALSE, cache=TRUE,fig.width=12, fig.height=7)
+```
+
+## cleaning data
+
+```{r include=FALSE}
+oldDepression <- cchsdat %>%
+  filter(dhhgage >= 13,
+         dhhgage<=16) %>%
+  dplyr::select(ccc_195,dhhgage,dhh_sex,ccc_065,ccc_030,ccc_085,ccc_095,hwtdgwtk) %>%
+  mutate(ccc_195=factor(ccc_195,levels=1:2,labels=c(1,0),NA),
+         dhh_sex=factor(dhh_sex,levels=1:2,labels=c(1,2),NA),
+         ccc_030=factor(ccc_030,levels=1:2,labels=c(1,0),NA),
+         ccc_065=factor(ccc_065,levels=1:2,labels=c(1,0),NA),
+         ccc_085=factor(ccc_085,levels=1:2,labels=c(1,0),NA),
+         ccc_095=factor(ccc_095,levels=1:2,labels=c(1,0),NA),
+         dhhgage=factor(dhhgage,levels=13:16,labels=c(13:16),NA),
+         hwtdgwtk=ifelse(hwtdgwtk>=999.96,NA,hwtdgwtk)
+         ) %>%
+  drop_na() 
+
+
+```
+
+```{r include=FALSE}
+print(oldDepression)
+```
+
+
+
+```{r include=FALSE}
+ oldDepression %>%
+  select(ccc_195,dhhgage,dhh_sex,ccc_065,ccc_030) 
+  oldDepression_1=rename(oldDepression,moodDisorder=ccc_195, age =dhhgage, sex=dhh_sex, hbp=ccc_065,COPD = ccc_030,heart=ccc_085,diabetes=ccc_095,weight=hwtdgwtk) 
+
+```
+
+
+
+
+
+
+
+```{r include=FALSE}
+oldDepression_d <- oldDepression_1 %>%
+  mutate(sex = factor(sex,levels=1:2,labels=c("Male","Female")),
+         age= factor(age,levels=c(13,14,15,16),labels=c("65-69","70-74","75-79","80+")),
+         hbp = factor(hbp,levels=0:1,labels=c("No","Yes")),
+         moodDisorder = factor(moodDisorder,levels=0:1,labels=c("No","Yes")),
+         COPD = factor(COPD,levels=0:1,labels=c("No","Yes")),
+         heart = factor(heart,levels=0:1,labels=c("No","Yes")),
+         diabetes = factor(diabetes,levels=0:1,labels=c("No","Yes")),
+         )
+
+```
+
+
+```{r}
+print(oldDepression_d)
+```
+
+
+
+
+```{r echo=FALSE}
+tab.age = as.data.frame(table(oldDepression_d[,c('age','moodDisorder')]))
+tab.sex = as.data.frame(table(oldDepression_d[,c('sex','moodDisorder')]))
+tab.hbp = as.data.frame(table(oldDepression_d[,c('hbp','moodDisorder')]))
+tab.COPD = as.data.frame(table(oldDepression_d[,c('COPD','moodDisorder')]))
+tab.heart = as.data.frame(table(oldDepression_d[,c('heart','moodDisorder')]))
+tab.diabetes = as.data.frame(table(oldDepression_d[,c('diabetes','moodDisorder')]))
+
+
+p1=ggplot(data=tab.age,aes(x=age,y=Freq,fill=moodDisorder))+geom_bar(stat='identity',position=position_dodge())
+p2=ggplot(data=tab.sex,aes(x=sex,y=Freq,fill=moodDisorder))+geom_bar(stat='identity',position=position_dodge())
+p3=ggplot(data=tab.hbp,aes(x=hbp,y=Freq,fill=moodDisorder))+geom_bar(stat='identity',position=position_dodge())
+p4=ggplot(data=tab.COPD,aes(x=COPD,y=Freq,fill=moodDisorder))+geom_bar(stat='identity',position=position_dodge())
+p5=ggplot(data=tab.heart,aes(x=heart,y=Freq,fill=moodDisorder))+geom_bar(stat='identity',position=position_dodge())
+p6=ggplot(data=tab.diabetes,aes(x=diabetes,y=Freq,fill=moodDisorder))+geom_bar(stat='identity',position=position_dodge())
+
+grid.arrange(p1,p2,p3,p4,p5,p6,nrow=3)
+```
+
+
+## Describe data
+
+
+```{r echo=FALSE}
+table1(~.|moodDisorder,data=oldDepression_d)
+```
+
+
+
+```{r}
+oldDepression_d %>% 
+    tabyl(sex,moodDisorder) %>%                
+    adorn_percentages("row") %>%    
+    adorn_totals(c("row","col")) %>%
+    adorn_pct_formatting(digits = 2) %>%  
+    adorn_ns()
+    
+```
+
+
+```{r echo=FALSE}
+oldDepression_d %>%  
+contingency(moodDisorder~sex)
+```
+
+```{r}
+oldDepression_d %>% 
+ diag_test(moodDisorder~sex)
+```
+
+
+```{r}
+oldDepression_d %>% 
+ diag_test(diabetes~sex)
+```
+
+
+```{r}
+oldDepression_d %>% 
+ diag_test(COPD~sex)
+```
+
+
+```{r}
+oldDepression_d %>% 
+ diag_test(hbp~sex)
+```
+
+
+```{r}
+oldDepression_d %>% 
+ diag_test(heart~sex)
+```
+
+
+
+
+
+
+
+```{r echo=FALSE}
+oldDepression_d %>% 
+    tabyl(age,moodDisorder) %>%                
+    adorn_percentages("row") %>%    
+    adorn_totals(c("row","col")) %>%
+    adorn_pct_formatting(digits = 2) %>%  
+    adorn_ns()                            
+```
+
+
+
+
+
+```{r echo=FALSE}
+summary(oldDepression_d)
+```
+## Univariate analysis
+
+
+```{r}
+uni.mod01 = glm(moodDisorder~age,data=oldDepression_d,family=binomial)
+summary(uni.mod01)
+```
+
+
+```{r echo=FALSE}
+uni.mod02 = glm(moodDisorder~sex,data=oldDepression_d,family=binomial)
+summary(uni.mod02)
+```
+
+
+
+```{r echo=FALSE}
+uni.mod03 = glm(moodDisorder~hbp,data=oldDepression_d,family=binomial)
+summary(uni.mod03)
+```
+
+```{r echo=FALSE}
+uni.mod04 = glm(moodDisorder~COPD,data=oldDepression_d,family=binomial)
+summary(uni.mod04)
+```
+
+```{r echo=FALSE}
+uni.mod05 = glm(moodDisorder~heart,data=oldDepression_d,family=binomial)
+summary(uni.mod05)
+```
+
+
+```{r echo=FALSE}
+uni.mod06 = glm(moodDisorder~diabetes,data=oldDepression_d,family=binomial)
+summary(uni.mod06)
+```
+
+```{r echo=FALSE}
+uni.mod07 = glm(moodDisorder~weight,data=oldDepression_d,family=binomial)
+summary(uni.mod07)
+Anova(uni.mod07)
+```
+
+
+
+```{r echo=FALSE}
+uni.mod_1 <- chisq.test(table(oldDepression_d$moodDisorder,oldDepression_d$sex))
+uni.mod_1
+```
+
+```{r echo=FALSE}
+uni.mod_2 <- chisq.test(table(oldDepression_d$moodDisorder,oldDepression_d$age))
+uni.mod_2
+```
+
+```{r echo=FALSE}
+uni.mod_3 <- chisq.test(table(oldDepression_d$moodDisorder,oldDepression_d$weight))
+uni.mod_3
+```
+
+
+```{r echo=FALSE}
+uni.mod_4 <- chisq.test(table(oldDepression_d$moodDisorder,oldDepression_d$diabetes))
+uni.mod_4
+```
+
+
+```{r echo=FALSE}
+uni.mod_5 <- chisq.test(table(oldDepression_d$moodDisorder,oldDepression_d$hbp))
+uni.mod_5
+```
+
+
+```{r echo=FALSE}
+uni.mod_6 <- chisq.test(table(oldDepression_d$moodDisorder,oldDepression_d$COPD))
+uni.mod_6
+```
+
+
+
+```{r echo=FALSE}
+uni.mod_7 <- chisq.test(table(oldDepression_d$moodDisorder,oldDepression_d$heart))
+uni.mod_7
+```
+
+```{r echo=FALSE}
+uniTab <- rbind(uni.mod_1,uni.mod_2,uni.mod_3,uni.mod_4,uni.mod_5,uni.mod_6,uni.mod_7)
+uniTab
+```
+
+
+
+```{r echo=FALSE}
+summary(univariateTable(moodDisorder~age+sex+hbp+COPD+heart+diabetes+weight,data=oldDepression_d,org=TRUE))
+
+```
+## ORs for univariate analysis
+
+```{r}
+coef = coef(uni.mod01)
+ci = confint(uni.mod01)
+ORs.age = exp(cbind(OR=coef,ci))
+ORs.age
+```
+
+
+```{r}
+coef = coef(uni.mod02)
+ci = confint(uni.mod02)
+ORs.sex = exp(cbind(OR=coef,ci))
+ORs.sex
+```
+
+
+```{r}
+coef = coef(uni.mod03)
+ci = confint(uni.mod03)
+ORs.hbp = exp(cbind(OR=coef,ci))
+ORs.hbp
+```
+
+```{r}
+coef = coef(uni.mod04)
+ci = confint(uni.mod04)
+ORs.copd = exp(cbind(OR=coef,ci))
+ORs.copd
+```
+
+```{r}
+coef = coef(uni.mod05)
+ci = confint(uni.mod05)
+ORs.hd = exp(cbind(OR=coef,ci))
+ORs.hd
+```
+
+
+
+```{r}
+coef = coef(uni.mod06)
+ci = confint(uni.mod06)
+ORs.dia = exp(cbind(OR=coef,ci))
+ORs.dia
+```
+
+```{r}
+coef = coef(uni.mod07)
+ci = confint(uni.mod07)
+ORs.wei = exp(cbind(OR=coef,ci))
+ORs.wei
+```
+
+
+```{r echo=FALSE}
+ORs.uni=rbind(ORs.age,ORs.sex,ORs.hbp,ORs.copd,ORs.hd,ORs.dia,ORs.wei)
+ORs.uni
+```
+
+
+
+
+
+## interaction effect of weight and high blood pressure
+
+```{r echo=FALSE}
+int.mod=glm(hbp~weight,data=oldDepression_d,family=binomial)
+summary(int.mod)
+```
+
+```{r}
+coef = coef(int.mod)
+ci = confint(int.mod)
+ORs = exp(cbind(OR=coef,ci))
+ORs
+```
+
+## multiple logistic regression
+
+```{r echo=FALSE}
+mod_1 = glm(moodDisorder~age+sex+hbp+COPD+heart+diabetes+weight,data=oldDepression_d,family=binomial)
+Anova(mod_1)
+summary(mod_1)
+```
+
+```{r echo=FALSE}
+coef = coef(mod_1)
+ci = confint(mod_1)
+ORs = exp(cbind(OR=coef,ci))
+ORs
+```
+
+```{r include=FALSE}
+compare.or=rbind(ORs.uni,ORs)
+compare.or
+```
+
+
+
+
+##  sex is less than 1, make it positive, reverse the reference
+
+```{r }
+
+
+oldDepression_d2 = oldDepression_d |> tibble () |>
+  mutate(age02 = relevel(age,ref='80+'))
+oldDepression_d2
+
+mod02 = glm(moodDisorder~age02+sex+hbp+COPD+heart+diabetes+weight,data=oldDepression_d2,family=binomial)
+coef02 = coef(mod02)
+ci02 = confint(mod02)
+ORs02 = exp(cbind(OR02=coef02,ci))
+ORs02
+```
+
+
+
+```{r echo=FALSE}
+#Getting the ROC curve
+pred = predict.glm(mod_1,type='response')
+#need to make sure that the first value is the TRUE values, second is the predictions
+roc01 = roc(oldDepression_1$moodDisorder,pred)
+roc01
+roc01$auc
+
+ggroc(roc01,color=2,lwd=1.5)+
+      geom_segment(aes(x=1, xend=0, y=0, yend=1), color="grey", linetype="dashed")+
+      annotate("text",x = .25, y=.5, label = "AUC=0.6428")
+
+
+
+```
+## regression diagnosis`
+
+
+```{r echo=FALSE}
+vif(mod_1)
+```
+
+
+```{r include=FALSE}
+mod_3 = glm(moodDisorder~age+sex+COPD+heart+diabetes+weight,data=oldDepression_d,family=binomial)
+summary(mod_3)
+```
+
+```{r include=FALSE} 
+mod_4 = glm(moodDisorder~age+sex+COPD+heart+diabetes+hbp,data=oldDepression_d,family=binomial)
+summary(mod_4)
+```
+
+
+```{r include=FALSE}
+#Getting the ROC curve
+pred = predict.glm(mod_3,type='response')
+roc03 = roc(oldDepression_d$moodDisorder,pred)
+roc03
+roc03$auc
+
+ggroc(roc03,color=2,lwd=1.5)+
+      geom_segment(aes(x=1, xend=0, y=0, yend=1), color="grey", linetype="dashed")+
+      annotate("text",x = .25, y=.5, label = "AUC=0.6424")
+```
+
+```{r include=FALSE}
+#Getting the ROC curve
+pred = predict.glm(mod_4,type='response')
+roc04 = roc(oldDepression_d$moodDisorder,pred)
+roc04
+roc04$auc
+
+ggroc(roc04,color=2,lwd=1.5)+
+      geom_segment(aes(x=1, xend=0, y=0, yend=1), color="grey", linetype="dashed")+
+      annotate("text",x = .25, y=.5, label = "AUC=0.6404")
+```
+
+```{r}
+ roclist <- list("both AUC=0.643" = roc01,
+                "no hbp AUC=0.642" = roc03,
+                "no weight AUC=0.640" = roc04)
+
+  ggroc(roclist,aes=c("color"), legacy.axes = TRUE)+
+  geom_abline() +
+  theme_light() +
+  labs(x = "1 - Specificity",
+       y = "Sensitivity",
+       color = "Logistic Models")
+```
+
+
+
+
+
+
